@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\TodoResource\Pages;
 use App\Filament\Resources\TodoResource\RelationManagers;
 use App\Models\Todo;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -85,6 +86,14 @@ class TodoResource extends Resource
                             ->label('負責人')
                             ->relationship('user', 'name')
                             ->required(),
+
+                        Forms\Components\Select::make('collaborator_ids')
+                            ->label('執行者')
+                            ->multiple()
+                            ->relationship('user', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->placeholder('選擇執行者...'),
                     ])
                     ->columns(2),
             ]);
@@ -106,6 +115,12 @@ class TodoResource extends Resource
                 Tables\Columns\TextColumn::make('user.name')
                     ->label('負責人')
                     ->sortable(),
+
+                Tables\Columns\TextColumn::make('collaborators.name')
+                    ->label('執行者')
+                    ->badge()
+                    ->separator(', ')
+                    ->color('info'),
 
                 Tables\Columns\SelectColumn::make('priority')
                     ->label('優先級')
@@ -162,6 +177,16 @@ class TodoResource extends Resource
                 Tables\Filters\SelectFilter::make('user')
                     ->label('負責人')
                     ->relationship('user', 'name'),
+
+                Tables\Filters\SelectFilter::make('collaborators')
+                    ->label('執行者')
+                    ->options(User::pluck('name', 'id')->toArray())
+                    ->query(function (Builder $query, array $data) {
+                        if (!empty($data['values'])) {
+                            $query->whereJsonContains('collaborator_ids', $data['values']);
+                        }
+                        return $query;
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
