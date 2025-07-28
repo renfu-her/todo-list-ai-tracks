@@ -90,7 +90,7 @@ class TodoResource extends Resource
                         Forms\Components\Select::make('collaborator_ids')
                             ->label('執行者')
                             ->multiple()
-                            ->relationship('user', 'name')
+                            ->options(User::pluck('name', 'id')->toArray())
                             ->searchable()
                             ->preload()
                             ->placeholder('選擇執行者...'),
@@ -116,10 +116,14 @@ class TodoResource extends Resource
                     ->label('負責人')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('collaborators.name')
+                Tables\Columns\TextColumn::make('collaborator_ids')
                     ->label('執行者')
+                    ->formatStateUsing(function ($state) {
+                        if (!$state) return '無';
+                        $users = User::whereIn('id', $state)->pluck('name')->toArray();
+                        return implode(', ', $users);
+                    })
                     ->badge()
-                    ->separator(', ')
                     ->color('info'),
 
                 Tables\Columns\SelectColumn::make('priority')

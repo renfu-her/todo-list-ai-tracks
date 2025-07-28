@@ -11,10 +11,20 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Coolsam\FilamentFlatpickr\Forms\Components\Flatpickr;
 use Mohamedsabil83\FilamentFormsTinyeditor\Components\TinyEditor;
+use App\Models\User;
 
 class TodosRelationManager extends RelationManager
 {
     protected static string $relationship = 'todos';
+
+    protected static ?string $navigationGroup = '專案管理';
+    protected static ?string $navigationLabel = '待辦事項';
+    protected static ?string $modelLabel = '待辦事項';
+
+    protected static ?string $title = '待辦事項';
+    protected static ?string $pluralModelLabel = '待辦事項列表';
+    protected static ?int $navigationSort = 1;
+
 
     public function form(Form $form): Form
     {
@@ -87,6 +97,16 @@ class TodosRelationManager extends RelationManager
                     ->label('負責人')
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('collaborator_ids')
+                    ->label('執行者')
+                    ->formatStateUsing(function ($state) {
+                        if (!$state) return '無';
+                        $users = User::whereIn('id', $state)->pluck('name')->toArray();
+                        return implode(', ', $users);
+                    })
+                    ->badge()
+                    ->color('info'),
+
                 Tables\Columns\SelectColumn::make('priority')
                     ->label('優先級')
                     ->options([
@@ -138,6 +158,16 @@ class TodosRelationManager extends RelationManager
                 Tables\Filters\SelectFilter::make('user')
                     ->label('負責人')
                     ->relationship('user', 'name'),
+
+                Tables\Filters\SelectFilter::make('collaborators')
+                    ->label('執行者')
+                    ->options(User::pluck('name', 'id')->toArray())
+                    ->query(function (Builder $query, array $data) {
+                        if (!empty($data['values'])) {
+                            $query->whereJsonContains('collaborator_ids', $data['values']);
+                        }
+                        return $query;
+                    }),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make(),
