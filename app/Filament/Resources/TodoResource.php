@@ -83,9 +83,13 @@ class TodoResource extends Resource
                             ->required(),
 
                         Forms\Components\Select::make('user_id')
-                            ->label('負責人')
-                            ->relationship('user', 'name')
-                            ->required(),
+                            ->label('交辦人員')
+                            ->multiple()
+                            ->options(User::pluck('name', 'id')->toArray())
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->placeholder('選擇交辦人員...'),
 
                         Forms\Components\Select::make('collaborator_ids')
                             ->label('執行者')
@@ -112,9 +116,15 @@ class TodoResource extends Resource
                     ->label('專案')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('user.name')
-                    ->label('負責人')
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('user_id')
+                    ->label('交辦人員')
+                    ->formatStateUsing(function ($state) {
+                        if (!$state) return '無';
+                        $users = User::whereIn('id', $state)->pluck('name')->toArray();
+                        return implode(', ', $users);
+                    })
+                    ->badge()
+                    ->color('success'),
 
                 Tables\Columns\TextColumn::make('collaborator_ids')
                     ->label('執行者')
@@ -179,8 +189,14 @@ class TodoResource extends Resource
                     ]),
 
                 Tables\Filters\SelectFilter::make('user')
-                    ->label('負責人')
-                    ->relationship('user', 'name'),
+                    ->label('交辦人員')
+                    ->options(User::pluck('name', 'id')->toArray())
+                    ->query(function (Builder $query, array $data) {
+                        if (!empty($data['values'])) {
+                            $query->whereJsonContains('user_id', $data['values']);
+                        }
+                        return $query;
+                    }),
 
                 Tables\Filters\SelectFilter::make('collaborators')
                     ->label('執行者')

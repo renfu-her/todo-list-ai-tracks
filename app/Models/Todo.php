@@ -25,12 +25,16 @@ class Todo extends Model
         'due_date' => 'datetime',
         'priority' => 'string',
         'status' => 'string',
+        'user_id' => 'array',
         'collaborator_ids' => 'array',
     ];
 
-    public function user(): BelongsTo
+    public function getAssignersAttribute()
     {
-        return $this->belongsTo(User::class);
+        if (!$this->user_id) {
+            return collect();
+        }
+        return User::whereIn('id', $this->user_id)->get();
     }
 
     public function project(): BelongsTo
