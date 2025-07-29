@@ -41,8 +41,9 @@ class TodoResource extends Resource
                             ->maxLength(255)
                             ->columnSpanFull(),
 
-                        TinyEditor::make('description')
+                        Forms\Components\MarkdownEditor::make('description')
                             ->label('描述')
+                            ->helperText('使用 Markdown 語法撰寫')
                             ->columnSpanFull(),
 
                         Forms\Components\Select::make('project_id')
