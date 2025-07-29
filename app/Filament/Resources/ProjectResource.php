@@ -41,7 +41,6 @@ class ProjectResource extends Resource
 
                         Forms\Components\MarkdownEditor::make('description')
                             ->label('專案描述')
-                            ->helperText('使用 Markdown 語法撰寫')
                             ->columnSpanFull(),
 
                         Forms\Components\Select::make('status')
