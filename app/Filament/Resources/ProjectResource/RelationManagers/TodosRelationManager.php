@@ -75,9 +75,14 @@ class TodosRelationManager extends RelationManager
                             ->required(),
 
                         Forms\Components\Select::make('user_id')
-                            ->label('負責人')
-                            ->relationship('user', 'name')
-                            ->required(),
+                            ->label('執行者')
+                            ->multiple()
+                            ->options(User::pluck('name', 'id')->toArray())
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->placeholder('選擇執行者...'),
+
                     ])
                     ->columns(2),
             ]);
@@ -93,19 +98,28 @@ class TodosRelationManager extends RelationManager
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('user.name')
-                    ->label('負責人')
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('collaborator_ids')
+                Tables\Columns\TextColumn::make('user_id')
                     ->label('執行者')
-                    ->formatStateUsing(function ($state) {
-                        if (!$state) return '無';
-                        $users = User::whereIn('id', $state)->pluck('name')->toArray();
+                    ->getStateUsing(function ($record) {
+                        if (!$record->user_id) return '無';
+
+                        $userIds = $record->user_id;
+                        if (is_string($userIds)) {
+                            $userIds = json_decode($userIds, true);
+                        }
+
+                        if (!is_array($userIds) || empty($userIds)) return '無';
+
+                        $users = User::whereIn('id', $userIds)->pluck('name')->toArray();
                         return implode(', ', $users);
                     })
                     ->badge()
                     ->color('info'),
+                    
+                Tables\Columns\TextColumn::make('due_date')
+                    ->label('截止日期')
+                    ->dateTime('Y-m-d H:i')
+                    ->sortable(),
 
                 Tables\Columns\SelectColumn::make('priority')
                     ->label('優先級')
@@ -124,11 +138,6 @@ class TodosRelationManager extends RelationManager
                         'completed' => '已完成',
                         'cancelled' => '已取消',
                     ])
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('due_date')
-                    ->label('截止日期')
-                    ->dateTime('Y-m-d H:i')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('created_at')
@@ -155,16 +164,14 @@ class TodosRelationManager extends RelationManager
                         'cancelled' => '已取消',
                     ]),
 
-                Tables\Filters\SelectFilter::make('user')
-                    ->label('負責人')
-                    ->relationship('user', 'name'),
 
-                Tables\Filters\SelectFilter::make('collaborators')
+
+                Tables\Filters\SelectFilter::make('user')
                     ->label('執行者')
                     ->options(User::pluck('name', 'id')->toArray())
                     ->query(function (Builder $query, array $data) {
                         if (!empty($data['values'])) {
-                            $query->whereJsonContains('collaborator_ids', $data['values']);
+                            $query->whereJsonContains('user_id', $data['values']);
                         }
                         return $query;
                     }),

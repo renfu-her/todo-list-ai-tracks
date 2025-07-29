@@ -6,6 +6,7 @@ use App\Filament\Resources\TodoResource\Pages;
 use App\Filament\Resources\TodoResource\RelationManagers;
 use App\Models\Todo;
 use App\Models\User;
+use App\Models\Project;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -46,7 +47,7 @@ class TodoResource extends Resource
 
                         Forms\Components\Select::make('project_id')
                             ->label('所屬專案')
-                            ->relationship('project', 'name')
+                            ->options(Project::pluck('name', 'id')->toArray())
                             ->searchable()
                             ->preload(),
 
@@ -83,20 +84,12 @@ class TodoResource extends Resource
                             ->required(),
 
                         Forms\Components\Select::make('user_id')
-                            ->label('交辦人員')
-                            ->multiple()
-                            ->options(User::pluck('name', 'id')->toArray())
-                            ->searchable()
-                            ->preload()
-                            ->required()
-                            ->placeholder('選擇交辦人員...'),
-
-                        Forms\Components\Select::make('collaborator_ids')
                             ->label('執行者')
                             ->multiple()
                             ->options(User::pluck('name', 'id')->toArray())
                             ->searchable()
                             ->preload()
+                            ->required()
                             ->placeholder('選擇執行者...'),
                     ])
                     ->columns(2),
@@ -114,23 +107,24 @@ class TodoResource extends Resource
 
                 Tables\Columns\TextColumn::make('project.name')
                     ->label('專案')
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
+
+
 
                 Tables\Columns\TextColumn::make('user_id')
-                    ->label('交辦人員')
-                    ->formatStateUsing(function ($state) {
-                        if (!$state) return '無';
-                        $users = User::whereIn('id', $state)->pluck('name')->toArray();
-                        return implode(', ', $users);
-                    })
-                    ->badge()
-                    ->color('success'),
-
-                Tables\Columns\TextColumn::make('collaborator_ids')
                     ->label('執行者')
-                    ->formatStateUsing(function ($state) {
-                        if (!$state) return '無';
-                        $users = User::whereIn('id', $state)->pluck('name')->toArray();
+                    ->getStateUsing(function ($record) {
+                        if (!$record->user_id) return '無';
+                        
+                        $userIds = $record->user_id;
+                        if (is_string($userIds)) {
+                            $userIds = json_decode($userIds, true);
+                        }
+                        
+                        if (!is_array($userIds) || empty($userIds)) return '無';
+                        
+                        $users = User::whereIn('id', $userIds)->pluck('name')->toArray();
                         return implode(', ', $users);
                     })
                     ->badge()
@@ -169,7 +163,7 @@ class TodoResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('project')
                     ->label('專案')
-                    ->relationship('project', 'name'),
+                    ->options(\App\Models\Project::pluck('name', 'id')->toArray()),
 
                 Tables\Filters\SelectFilter::make('priority')
                     ->label('優先級')
@@ -188,22 +182,14 @@ class TodoResource extends Resource
                         'cancelled' => '已取消',
                     ]),
 
-                Tables\Filters\SelectFilter::make('user')
-                    ->label('交辦人員')
-                    ->options(User::pluck('name', 'id')->toArray())
-                    ->query(function (Builder $query, array $data) {
-                        if (!empty($data['values'])) {
-                            $query->whereJsonContains('user_id', $data['values']);
-                        }
-                        return $query;
-                    }),
 
-                Tables\Filters\SelectFilter::make('collaborators')
+
+                Tables\Filters\SelectFilter::make('user')
                     ->label('執行者')
                     ->options(User::pluck('name', 'id')->toArray())
                     ->query(function (Builder $query, array $data) {
                         if (!empty($data['values'])) {
-                            $query->whereJsonContains('collaborator_ids', $data['values']);
+                            $query->whereJsonContains('user_id', $data['values']);
                         }
                         return $query;
                     }),
